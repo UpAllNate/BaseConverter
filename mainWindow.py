@@ -8,23 +8,28 @@ customtkinter.set_default_color_theme("blue")
 app = customtkinter.CTk()
 app.title("Base Converter")
 app.geometry("300x500")
-app.grid_columnconfigure(0, weight=1)
+app.grid_columnconfigure((0,1), weight=1)
 
-auto_compute = customtkinter.StringVar(value=0)
+auto_compute = customtkinter.StringVar(value=1)
 
 def switch_event():
-    print("switch toggled, current value:", auto_compute.get())
+    global button_compute
+    if bool(int(auto_compute.get())):
+        button_compute.configure(state="disabled")
+    else:
+        button_compute.configure(state="normal")
 
-switch_1 = customtkinter.CTkSwitch(master=app, text="Auto Compute", command=switch_event,
+switch_auto_compute = customtkinter.CTkSwitch(master=app, text="Auto Compute", command=switch_event,
                                    variable=auto_compute, onvalue=1, offvalue=0)
-switch_1.grid(row=0, column=0, pady=(15,0))
-switch_1.grid_columnconfigure(1, weight=1)
+switch_auto_compute.grid(row=0, column=0, pady=(15,0))
+switch_auto_compute.grid_columnconfigure(1, weight=1)
+switch_auto_compute.select()
 
 class EntryType():
     def __init__(self, app : customtkinter.CTk, label : str, row : int) -> None:
             
         self.frame = customtkinter.CTkFrame(master=app)
-        self.frame.grid(row=row, column=0, sticky="we", padx=10, pady=10) # frame.pack(fill="x")
+        self.frame.grid(row=row, column=0, sticky="we", padx=10, pady=10, columnspan=2) # frame.pack(fill="x")
         self.frame.grid_columnconfigure(0, weight=1)
 
         self.label = customtkinter.CTkLabel(master=self.frame, height=20, text=label, text_font=("Roboto Medium", -20))
@@ -71,6 +76,7 @@ check_var = tkinter.StringVar()
 def sign_checkbox_event():
     global bit_sign
     bit_sign = bool(int(check_var.get()))
+    compute_now(binary_sign_change=True)
 
 checkbox = customtkinter.CTkCheckBox(master=option_frame, text="", command=sign_checkbox_event,
                                      variable=check_var, onvalue=1, offvalue=0)
@@ -87,9 +93,11 @@ def twos_comp(val, bits):
 val_d = 0
 prev_val_d = val_d
 
-def handleKeyPress(event):
-    global val_d, prev_val_d
+def compute_now(event=None, binary_sign_change=False, compute_butt=False):
+    global val_d, prev_val_d, binary_width
 
+    i = 0
+    print(i); i += 1 
     txt = bw_value.get()
     try:
         binary_width = int(txt)
@@ -107,8 +115,23 @@ def handleKeyPress(event):
             bitwidth.insert(0,"8")
             bitwidth.configure(text_color="black")
             binary_width = 8
+    
+    print(i); i += 1 
+    if app.focus_get() == binary.entry.entry or binary_sign_change is True or app.focus_get() == bitwidth.entry:
+        txt = binary.value.get()
+        try:
+            bit_width_string = txt.zfill(binary_width)
 
-    if app.focus_get() == decimal.entry.entry:
+            if bit_sign and bit_width_string[0] == "1":
+                val_d = twos_comp(int(txt, base=2), len(txt))
+            else:
+                val_d = int(txt, base=2)
+            binary.entry.configure(text_color="black")
+        except ValueError:
+            binary.entry.configure(text_color="red")
+            return
+
+    elif app.focus_get() == decimal.entry.entry:
 
         txt = decimal.value.get()
         try:
@@ -127,25 +150,15 @@ def handleKeyPress(event):
             hexbox.entry.configure(text_color="red")
             return
 
-    elif app.focus_get() == binary.entry.entry:
-        txt = binary.value.get()
-        try:
-            if bit_sign:
-                print("signed")
-                val_d = twos_comp(int(txt, base=2), len(txt))
-            else:
-                val_d = int(txt, base=2)
-            binary.entry.configure(text_color="black")
-        except ValueError:
-            binary.entry.configure(text_color="red")
+    print(i); i += 1 
+    if not (app.focus_get() == bitwidth.entry) and not compute_butt:
+        if val_d == prev_val_d:
             return
 
-    if val_d == prev_val_d:
-        return
+        if not (bool(int(auto_compute.get()))):
+            return
 
-    if not bool(int(auto_compute.get())):
-        return
-
+    print(i); i += 1 
     # Number valid, print to output
     decimal.entry.configure(text_color="black")
     hexbox.entry.configure(text_color="black")
@@ -165,7 +178,21 @@ def handleKeyPress(event):
 
     prev_val_d = val_d
 
+def compute_button_method():
+    compute_now(compute_butt=True)
 
-app.bind("<KeyRelease>", handleKeyPress)
+def compute_on_return(event):
+    if (bool(int(auto_compute.get()))):
+        return
+    compute_now(compute_butt=True)
+
+button_compute = customtkinter.CTkButton(master=app, text="Compute", command=compute_button_method)
+button_compute.grid(row=0, column=1, pady=(15,0))
+button_compute.grid_columnconfigure(0, weight=1)
+button_compute.configure(state="disabled")
+
+app.bind("<KeyRelease>", compute_now)
+app.bind("<Return>", compute_on_return)
+
 
 app.mainloop()
